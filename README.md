@@ -64,6 +64,22 @@ npm run build && npm start
 ```
 </details>
 
+### Run with Docker
+
+```bash
+docker compose up gateway       # webchat on :18789
+docker compose up mcp-http      # MCP HTTP/SSE on :18790 (bearer-auth)
+```
+
+See [`docs/DOCKER.md`](docs/DOCKER.md) for local + Railway deployment.
+
+### Use Clodds as an MCP Server
+
+Every skill is exposed as an MCP tool so Claude Desktop, Claude Code, Cursor, and Zed can call it directly. Typed per-subcommand tools ship for the top trading skills (`clodds_binance_spot_balance`, `clodds_jupiter_swap`, `clodds_polymarket_buy`, …); every other skill has a generic `clodds_<skill>(args)` fallback.
+
+See [`docs/MCP-CLIENTS.md`](docs/MCP-CLIENTS.md) for client config snippets.
+
+
 ## Demo
 
 **30-second terminal onboarding** — See Clodds in action:
