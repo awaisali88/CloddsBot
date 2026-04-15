@@ -499,6 +499,9 @@ export const CORE_TOOL_NAMES = new Set([
   'mexc_spot_balance',
   'hyperliquid_spot_balance',
 
+  // Solana wallet balance (1) — always surfaced so "solana balance" works
+  'solana_balance',
+
   // Meta (1)
   'tool_search',
 ]);

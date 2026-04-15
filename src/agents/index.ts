@@ -235,6 +235,7 @@ When presenting changes, use percentage format (e.g., "+5.2%").
 
 Slash-command to tool mapping — call these EXACT tools, do NOT substitute with generic portfolio/wallets tools:
 - "/spot balance" or "spot balance" → call binance_spot_balance (+ bybit_spot_balance / mexc_spot_balance / hyperliquid_spot_balance if configured). Never say "no balances" without actually calling these.
+- "solana balance", "sol balance", "what's in my Solana wallet", or any question about on-chain Solana holdings → call solana_balance. Do NOT say "I don't have a tool" — solana_balance returns SOL + all SPL token balances for the user's wallet.
 - "/spot price <symbol>" → call binance_spot_price (or the relevant exchange tool)
 - "/spot buy|sell|limit|stop|cancel|orders|markets|book|trades|history" → call the corresponding binance_spot_* / bybit_spot_* / mexc_spot_* / hyperliquid_spot_* tool
 - "/futures balance" → call binance_futures_balance, bybit_balance, mexc_balance, hyperliquid_balance
@@ -5176,6 +5177,17 @@ function buildTools(): ToolDefinition[] {
     // ============================================
     // SOLANA WALLET + AGGREGATORS (Jupiter + Pump.fun)
     // ============================================
+    {
+      name: 'solana_balance',
+      description: 'Get SOL balance AND all SPL token balances for the connected Solana wallet (or a specified address). Use this for general "what do I hold" / "Solana balance" questions — this is the authoritative Solana wallet check.',
+      input_schema: {
+        type: 'object',
+        properties: {
+          owner: { type: 'string', description: 'Wallet address to query (defaults to the wallet loaded from SOLANA_PRIVATE_KEY)' },
+          include_zero: { type: 'boolean', description: 'Include zero-balance token accounts (default false)' },
+        },
+      },
+    },
     {
       name: 'solana_address',
       description: 'Get your Solana wallet public address.',
@@ -14249,6 +14261,47 @@ async function executeTool(
         try {
           const keypair = loadSolanaKeypair();
           return JSON.stringify({ address: keypair.publicKey.toBase58() });
+        } catch (err: unknown) {
+          return JSON.stringify({ error: (err as Error).message });
+        }
+      }
+
+      case 'solana_balance': {
+        try {
+          const { PublicKey } = await import('@solana/web3.js');
+          const connection = getSolanaConnection();
+          const ownerStr = (toolInput.owner as string | undefined)
+            ?? loadSolanaKeypair().publicKey.toBase58();
+          const owner = new PublicKey(ownerStr);
+          const includeZero = (toolInput.include_zero as boolean | undefined) === true;
+
+          const [lamports, tokenAccounts] = await Promise.all([
+            connection.getBalance(owner),
+            connection.getParsedTokenAccountsByOwner(owner, {
+              programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
+            }),
+          ]);
+
+          const sol = lamports / 1e9;
+          const tokens = tokenAccounts.value
+            .map(({ account }) => {
+              const info = (account.data as { parsed?: { info?: { mint?: string; tokenAmount?: { uiAmount?: number; decimals?: number } } } }).parsed?.info;
+              return {
+                mint: info?.mint ?? '',
+                amount: info?.tokenAmount?.uiAmount ?? 0,
+                decimals: info?.tokenAmount?.decimals ?? 0,
+              };
+            })
+            .filter((t) => includeZero || t.amount > 0)
+            .sort((a, b) => b.amount - a.amount);
+
+          return JSON.stringify({
+            wallet: ownerStr,
+            sol,
+            lamports,
+            splTokenCount: tokens.length,
+            tokens,
+          });
         } catch (err: unknown) {
           return JSON.stringify({ error: (err as Error).message });
         }
