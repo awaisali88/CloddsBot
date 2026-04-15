@@ -307,20 +307,146 @@ async function leverageHandler(
 // EXPORT HANDLERS MAP
 // =============================================================================
 
+// =============================================================================
+// SPOT HANDLERS
+// =============================================================================
+
+async function spotBalanceHandler(
+  _toolInput: ToolInput,
+  _context: HandlerContext
+): Promise<HandlerResult> {
+  const wallet = getWallet();
+  if (!wallet) return errorResult('Set HYPERLIQUID_WALLET');
+  try {
+    const balances = await hyperliquid.getSpotBalances(wallet);
+    return JSON.stringify({ balances });
+  } catch (err: unknown) {
+    return JSON.stringify({ error: (err as Error).message });
+  }
+}
+
+async function spotPriceHandler(
+  toolInput: ToolInput,
+  _context: HandlerContext
+): Promise<HandlerResult> {
+  const pair = toolInput.pair as string;
+  if (!pair) return errorResult('pair required (e.g. HYPE/USDC)');
+  try {
+    const price = await hyperliquid.getSpotPrice(pair);
+    return JSON.stringify({ pair, price });
+  } catch (err: unknown) {
+    return JSON.stringify({ error: (err as Error).message });
+  }
+}
+
+async function spotBookHandler(
+  toolInput: ToolInput,
+  _context: HandlerContext
+): Promise<HandlerResult> {
+  const pair = toolInput.pair as string;
+  if (!pair) return errorResult('pair required');
+  try {
+    const book = await hyperliquid.getSpotOrderBook(pair);
+    return JSON.stringify(book);
+  } catch (err: unknown) {
+    return JSON.stringify({ error: (err as Error).message });
+  }
+}
+
+async function spotMarketsHandler(
+  _toolInput: ToolInput,
+  _context: HandlerContext
+): Promise<HandlerResult> {
+  try {
+    const meta = await hyperliquid.getSpotMeta();
+    const markets = meta.universe.map((u) => {
+      const base = meta.tokens[u.tokens[0]]?.name;
+      const quote = meta.tokens[u.tokens[1]]?.name;
+      return { symbol: u.name, base, quote };
+    });
+    return JSON.stringify({ count: markets.length, markets: markets.slice(0, 50) });
+  } catch (err: unknown) {
+    return JSON.stringify({ error: (err as Error).message });
+  }
+}
+
+async function spotBuyHandler(
+  toolInput: ToolInput,
+  _context: HandlerContext
+): Promise<HandlerResult> {
+  const env = getHyperliquidConfig();
+  if (!env) return errorResult('Set HYPERLIQUID_WALLET and HYPERLIQUID_PRIVATE_KEY');
+  const pair = toolInput.pair as string;
+  const size = toolInput.size as number;
+  const price = toolInput.price as number | undefined;
+  if (!pair || !size) return errorResult('pair and size required');
+  try {
+    const coin = await hyperliquid.resolveSpotCoin(pair);
+    const limitPx = price ?? await hyperliquid.getSpotPrice(pair);
+    const result = await hyperliquid.placeSpotOrder(env.config, {
+      coin,
+      side: 'BUY',
+      price: limitPx,
+      size,
+      type: price ? 'LIMIT' : 'MARKET',
+    });
+    return JSON.stringify(result);
+  } catch (err: unknown) {
+    return JSON.stringify({ error: (err as Error).message });
+  }
+}
+
+async function spotSellHandler(
+  toolInput: ToolInput,
+  _context: HandlerContext
+): Promise<HandlerResult> {
+  const env = getHyperliquidConfig();
+  if (!env) return errorResult('Set HYPERLIQUID_WALLET and HYPERLIQUID_PRIVATE_KEY');
+  const pair = toolInput.pair as string;
+  const size = toolInput.size as number;
+  const price = toolInput.price as number | undefined;
+  if (!pair || !size) return errorResult('pair and size required');
+  try {
+    const coin = await hyperliquid.resolveSpotCoin(pair);
+    const limitPx = price ?? await hyperliquid.getSpotPrice(pair);
+    const result = await hyperliquid.placeSpotOrder(env.config, {
+      coin,
+      side: 'SELL',
+      price: limitPx,
+      size,
+      type: price ? 'LIMIT' : 'MARKET',
+    });
+    return JSON.stringify(result);
+  } catch (err: unknown) {
+    return JSON.stringify({ error: (err as Error).message });
+  }
+}
+
+// =============================================================================
+// EXPORT HANDLERS MAP
+// =============================================================================
+
 export const hyperliquidHandlers: HandlersMap = {
-  // Read-only
+  // Read-only (perps)
   hyperliquid_balance: balanceHandler,
   hyperliquid_positions: positionsHandler,
   hyperliquid_orders: ordersHandler,
   hyperliquid_price: priceHandler,
   hyperliquid_funding: fundingHandler,
-  // Trading
+  // Trading (perps)
   hyperliquid_long: longHandler,
   hyperliquid_short: shortHandler,
   hyperliquid_close: closeHandler,
   hyperliquid_cancel: cancelHandler,
   hyperliquid_cancel_all: cancelAllHandler,
   hyperliquid_leverage: leverageHandler,
+  // Spot
+  hyperliquid_spot_balance: spotBalanceHandler,
+  hyperliquid_spot_price: spotPriceHandler,
+  hyperliquid_spot_book: spotBookHandler,
+  hyperliquid_spot_markets: spotMarketsHandler,
+  hyperliquid_spot_buy: spotBuyHandler,
+  hyperliquid_spot_sell: spotSellHandler,
 };
 
 export default hyperliquidHandlers;

@@ -493,6 +493,12 @@ export const CORE_TOOL_NAMES = new Set([
   'coingecko_price',
   'solana_address',
 
+  // Spot trading balance reads (4) — always surfaced so /spot balance works
+  'binance_spot_balance',
+  'bybit_spot_balance',
+  'mexc_spot_balance',
+  'hyperliquid_spot_balance',
+
   // Meta (1)
   'tool_search',
 ]);

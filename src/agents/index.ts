@@ -233,6 +233,14 @@ Be concise and direct. Use data when available. Format responses for chat (keep 
 When presenting prices, use cents format (e.g., "45¢" not "0.45").
 When presenting changes, use percentage format (e.g., "+5.2%").
 
+Slash-command to tool mapping — call these EXACT tools, do NOT substitute with generic portfolio/wallets tools:
+- "/spot balance" or "spot balance" → call binance_spot_balance (+ bybit_spot_balance / mexc_spot_balance / hyperliquid_spot_balance if configured). Never say "no balances" without actually calling these.
+- "/spot price <symbol>" → call binance_spot_price (or the relevant exchange tool)
+- "/spot buy|sell|limit|stop|cancel|orders|markets|book|trades|history" → call the corresponding binance_spot_* / bybit_spot_* / mexc_spot_* / hyperliquid_spot_* tool
+- "/futures balance" → call binance_futures_balance, bybit_balance, mexc_balance, hyperliquid_balance
+- "/futures long|short|close|positions|price" → call the corresponding *_futures_* tool
+- Never paraphrase "no balances" or "no credentials" without calling the tool first. The tool itself returns an explicit error when credentials are missing.
+
 {{SKILLS}}
 
 Available platforms: polymarket, kalshi, manifold, metaculus, predictit
@@ -4406,6 +4414,489 @@ function buildTools(): ToolDefinition[] {
           symbol: { type: 'string', description: 'Trading pair (e.g., BTCUSDT)' },
         },
         required: ['symbol'],
+      },
+    },
+
+    // =========================================================================
+    // Spot Trading — Binance Spot
+    // =========================================================================
+    {
+      name: 'binance_spot_balance',
+      description: 'Get Binance Spot wallet balances (all assets with non-zero total)',
+      input_schema: { type: 'object', properties: {} },
+    },
+    {
+      name: 'binance_spot_price',
+      description: 'Get last price for a Binance Spot pair',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string', description: 'Spot pair, e.g. BTCUSDT, ETHUSDT, SOLUSDC' },
+        },
+        required: ['symbol'],
+      },
+    },
+    {
+      name: 'binance_spot_book',
+      description: 'Get Binance Spot order book (top N bids/asks)',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          limit: { type: 'number', description: 'One of 5,10,20,50,100,500,1000,5000 (default 20)' },
+        },
+        required: ['symbol'],
+      },
+    },
+    {
+      name: 'binance_spot_markets',
+      description: 'List available Binance Spot trading pairs (filterable)',
+      input_schema: {
+        type: 'object',
+        properties: {
+          search: { type: 'string', description: 'Optional substring filter (case-insensitive), e.g. BTC' },
+        },
+      },
+    },
+    {
+      name: 'binance_spot_orders',
+      description: 'List open Binance Spot orders (optionally filtered by symbol)',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+        },
+      },
+    },
+    {
+      name: 'binance_spot_trades',
+      description: 'Recent executed Binance Spot trades for a symbol',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          limit: { type: 'number', description: 'Max records (default 20)' },
+        },
+        required: ['symbol'],
+      },
+    },
+    {
+      name: 'binance_spot_history',
+      description: 'Full order history for a Binance Spot symbol',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          limit: { type: 'number', description: 'Max records (default 20)' },
+        },
+        required: ['symbol'],
+      },
+    },
+    {
+      name: 'binance_spot_buy',
+      description: 'Buy a Binance Spot pair — market order if no price, limit order if price is given',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          quantity: { type: 'number', description: 'Amount of base asset to buy' },
+          price: { type: 'number', description: 'Optional limit price; omit for MARKET' },
+        },
+        required: ['symbol', 'quantity'],
+      },
+    },
+    {
+      name: 'binance_spot_sell',
+      description: 'Sell a Binance Spot pair — market order if no price, limit order if price is given',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          quantity: { type: 'number' },
+          price: { type: 'number', description: 'Optional limit price; omit for MARKET' },
+        },
+        required: ['symbol', 'quantity'],
+      },
+    },
+    {
+      name: 'binance_spot_limit',
+      description: 'Place an explicit limit order on Binance Spot',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          side: { type: 'string', enum: ['BUY', 'SELL', 'buy', 'sell'] },
+          quantity: { type: 'number' },
+          price: { type: 'number' },
+        },
+        required: ['symbol', 'side', 'quantity', 'price'],
+      },
+    },
+    {
+      name: 'binance_spot_stop_limit',
+      description: 'Place a stop-limit order on Binance Spot',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          side: { type: 'string', enum: ['BUY', 'SELL', 'buy', 'sell'] },
+          quantity: { type: 'number' },
+          stopPrice: { type: 'number', description: 'Trigger price' },
+          limitPrice: { type: 'number', description: 'Limit price to place once triggered' },
+        },
+        required: ['symbol', 'side', 'quantity', 'stopPrice', 'limitPrice'],
+      },
+    },
+    {
+      name: 'binance_spot_cancel',
+      description: 'Cancel a specific Binance Spot order by ID',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          orderId: { type: 'number' },
+        },
+        required: ['symbol', 'orderId'],
+      },
+    },
+    {
+      name: 'binance_spot_cancel_all',
+      description: 'Cancel all open Binance Spot orders for a symbol',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+        },
+        required: ['symbol'],
+      },
+    },
+
+    // =========================================================================
+    // Spot Trading — Bybit Spot
+    // =========================================================================
+    {
+      name: 'bybit_spot_balance',
+      description: 'Get Bybit Spot wallet balances',
+      input_schema: { type: 'object', properties: {} },
+    },
+    {
+      name: 'bybit_spot_price',
+      description: 'Last price for a Bybit Spot pair',
+      input_schema: {
+        type: 'object',
+        properties: { symbol: { type: 'string' } },
+        required: ['symbol'],
+      },
+    },
+    {
+      name: 'bybit_spot_book',
+      description: 'Bybit Spot order book (top levels)',
+      input_schema: {
+        type: 'object',
+        properties: { symbol: { type: 'string' }, limit: { type: 'number' } },
+        required: ['symbol'],
+      },
+    },
+    {
+      name: 'bybit_spot_markets',
+      description: 'List available Bybit Spot pairs',
+      input_schema: {
+        type: 'object',
+        properties: { search: { type: 'string' } },
+      },
+    },
+    {
+      name: 'bybit_spot_orders',
+      description: 'Open Bybit Spot orders',
+      input_schema: {
+        type: 'object',
+        properties: { symbol: { type: 'string' } },
+      },
+    },
+    {
+      name: 'bybit_spot_trades',
+      description: 'Recent Bybit Spot executions',
+      input_schema: {
+        type: 'object',
+        properties: { symbol: { type: 'string' }, limit: { type: 'number' } },
+      },
+    },
+    {
+      name: 'bybit_spot_history',
+      description: 'Bybit Spot order history',
+      input_schema: {
+        type: 'object',
+        properties: { symbol: { type: 'string' }, limit: { type: 'number' } },
+      },
+    },
+    {
+      name: 'bybit_spot_buy',
+      description: 'Buy on Bybit Spot (market if no price, limit if price given)',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          quantity: { type: 'number' },
+          price: { type: 'number' },
+        },
+        required: ['symbol', 'quantity'],
+      },
+    },
+    {
+      name: 'bybit_spot_sell',
+      description: 'Sell on Bybit Spot',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          quantity: { type: 'number' },
+          price: { type: 'number' },
+        },
+        required: ['symbol', 'quantity'],
+      },
+    },
+    {
+      name: 'bybit_spot_limit',
+      description: 'Place explicit Bybit Spot limit order',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          side: { type: 'string', enum: ['BUY', 'SELL', 'buy', 'sell'] },
+          quantity: { type: 'number' },
+          price: { type: 'number' },
+        },
+        required: ['symbol', 'side', 'quantity', 'price'],
+      },
+    },
+    {
+      name: 'bybit_spot_stop_limit',
+      description: 'Bybit Spot stop-limit order',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          side: { type: 'string', enum: ['BUY', 'SELL', 'buy', 'sell'] },
+          quantity: { type: 'number' },
+          stopPrice: { type: 'number' },
+          limitPrice: { type: 'number' },
+        },
+        required: ['symbol', 'side', 'quantity', 'stopPrice', 'limitPrice'],
+      },
+    },
+    {
+      name: 'bybit_spot_cancel',
+      description: 'Cancel Bybit Spot order by ID',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          orderId: { type: 'string' },
+        },
+        required: ['symbol', 'orderId'],
+      },
+    },
+    {
+      name: 'bybit_spot_cancel_all',
+      description: 'Cancel all Bybit Spot orders (optionally filtered)',
+      input_schema: {
+        type: 'object',
+        properties: { symbol: { type: 'string' } },
+      },
+    },
+
+    // =========================================================================
+    // Spot Trading — MEXC Spot
+    // =========================================================================
+    {
+      name: 'mexc_spot_balance',
+      description: 'Get MEXC Spot wallet balances',
+      input_schema: { type: 'object', properties: {} },
+    },
+    {
+      name: 'mexc_spot_price',
+      description: 'Last price for a MEXC Spot pair',
+      input_schema: {
+        type: 'object',
+        properties: { symbol: { type: 'string' } },
+        required: ['symbol'],
+      },
+    },
+    {
+      name: 'mexc_spot_book',
+      description: 'MEXC Spot order book',
+      input_schema: {
+        type: 'object',
+        properties: { symbol: { type: 'string' }, limit: { type: 'number' } },
+        required: ['symbol'],
+      },
+    },
+    {
+      name: 'mexc_spot_markets',
+      description: 'List available MEXC Spot pairs',
+      input_schema: {
+        type: 'object',
+        properties: { search: { type: 'string' } },
+      },
+    },
+    {
+      name: 'mexc_spot_orders',
+      description: 'Open MEXC Spot orders',
+      input_schema: {
+        type: 'object',
+        properties: { symbol: { type: 'string' } },
+      },
+    },
+    {
+      name: 'mexc_spot_trades',
+      description: 'Recent MEXC Spot executions',
+      input_schema: {
+        type: 'object',
+        properties: { symbol: { type: 'string' }, limit: { type: 'number' } },
+        required: ['symbol'],
+      },
+    },
+    {
+      name: 'mexc_spot_history',
+      description: 'MEXC Spot order history',
+      input_schema: {
+        type: 'object',
+        properties: { symbol: { type: 'string' }, limit: { type: 'number' } },
+        required: ['symbol'],
+      },
+    },
+    {
+      name: 'mexc_spot_buy',
+      description: 'Buy on MEXC Spot',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          quantity: { type: 'number' },
+          price: { type: 'number' },
+        },
+        required: ['symbol', 'quantity'],
+      },
+    },
+    {
+      name: 'mexc_spot_sell',
+      description: 'Sell on MEXC Spot',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          quantity: { type: 'number' },
+          price: { type: 'number' },
+        },
+        required: ['symbol', 'quantity'],
+      },
+    },
+    {
+      name: 'mexc_spot_limit',
+      description: 'Place explicit MEXC Spot limit order',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          side: { type: 'string', enum: ['BUY', 'SELL', 'buy', 'sell'] },
+          quantity: { type: 'number' },
+          price: { type: 'number' },
+        },
+        required: ['symbol', 'side', 'quantity', 'price'],
+      },
+    },
+    {
+      name: 'mexc_spot_stop_limit',
+      description: 'MEXC Spot stop-limit order',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          side: { type: 'string', enum: ['BUY', 'SELL', 'buy', 'sell'] },
+          quantity: { type: 'number' },
+          stopPrice: { type: 'number' },
+          limitPrice: { type: 'number' },
+        },
+        required: ['symbol', 'side', 'quantity', 'stopPrice', 'limitPrice'],
+      },
+    },
+    {
+      name: 'mexc_spot_cancel',
+      description: 'Cancel MEXC Spot order by ID',
+      input_schema: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string' },
+          orderId: { type: 'string' },
+        },
+        required: ['symbol', 'orderId'],
+      },
+    },
+    {
+      name: 'mexc_spot_cancel_all',
+      description: 'Cancel all MEXC Spot orders for a symbol',
+      input_schema: {
+        type: 'object',
+        properties: { symbol: { type: 'string' } },
+        required: ['symbol'],
+      },
+    },
+
+    // =========================================================================
+    // Spot Trading — Hyperliquid Spot
+    // =========================================================================
+    {
+      name: 'hyperliquid_spot_balance',
+      description: 'Get Hyperliquid spot balances (USDC and spot tokens)',
+      input_schema: { type: 'object', properties: {} },
+    },
+    {
+      name: 'hyperliquid_spot_price',
+      description: 'Mid price for a Hyperliquid spot pair, e.g. HYPE/USDC or bare HYPE',
+      input_schema: {
+        type: 'object',
+        properties: { pair: { type: 'string', description: 'Pair name, e.g. HYPE/USDC or PURR/USDC' } },
+        required: ['pair'],
+      },
+    },
+    {
+      name: 'hyperliquid_spot_book',
+      description: 'L2 order book for a Hyperliquid spot pair',
+      input_schema: {
+        type: 'object',
+        properties: { pair: { type: 'string' } },
+        required: ['pair'],
+      },
+    },
+    {
+      name: 'hyperliquid_spot_markets',
+      description: 'List all Hyperliquid spot pairs',
+      input_schema: { type: 'object', properties: {} },
+    },
+    {
+      name: 'hyperliquid_spot_buy',
+      description: 'Buy on Hyperliquid spot (market if no price, limit if given)',
+      input_schema: {
+        type: 'object',
+        properties: {
+          pair: { type: 'string', description: 'Pair like HYPE/USDC' },
+          size: { type: 'number', description: 'Base-asset size to buy' },
+          price: { type: 'number', description: 'Optional limit price' },
+        },
+        required: ['pair', 'size'],
+      },
+    },
+    {
+      name: 'hyperliquid_spot_sell',
+      description: 'Sell on Hyperliquid spot',
+      input_schema: {
+        type: 'object',
+        properties: {
+          pair: { type: 'string' },
+          size: { type: 'number' },
+          price: { type: 'number' },
+        },
+        required: ['pair', 'size'],
       },
     },
 

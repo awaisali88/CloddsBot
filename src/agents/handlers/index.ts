@@ -34,8 +34,11 @@ import { arbitrageHandlers } from './arbitrage';
 import { paperTradingHandlers } from './paper-trading';
 import { credentialsHandlers } from './credentials';
 import { binanceHandlers } from './binance';
+import { binanceSpotHandlers } from './binance-spot';
 import { bybitHandlers } from './bybit';
+import { bybitSpotHandlers } from './bybit-spot';
 import { hyperliquidHandlers } from './hyperliquid';
+import { mexcSpotHandlers } from './mexc-spot';
 import { predictfunHandlers } from './predictfun';
 import { manifoldHandlers } from './manifold';
 import { kalshiHandlers } from './kalshi';
@@ -60,8 +63,11 @@ const allHandlers: HandlersMap = {
   ...paperTradingHandlers,
   ...credentialsHandlers,
   ...binanceHandlers,
+  ...binanceSpotHandlers,
   ...bybitHandlers,
+  ...bybitSpotHandlers,
   ...hyperliquidHandlers,
+  ...mexcSpotHandlers,
   ...predictfunHandlers,
   ...manifoldHandlers,
   ...kalshiHandlers,
