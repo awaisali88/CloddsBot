@@ -13,6 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createHash } from 'crypto';
 import { logger } from '../utils/logger';
+import { anthropicSdkAuth } from '../providers';
 
 /** Image source types */
 export type ImageSource =
@@ -277,9 +278,8 @@ async function sourceToContent(
 }
 
 export function createImageTool(apiKey?: string): ImageTool {
-  const anthropic = new Anthropic({
-    apiKey: apiKey || process.env.ANTHROPIC_API_KEY,
-  });
+  const cred = apiKey || process.env.ANTHROPIC_API_KEY || '';
+  const anthropic = new Anthropic(anthropicSdkAuth(cred));
 
   return {
     async analyze(source, options = {}): Promise<AnalysisResult> {

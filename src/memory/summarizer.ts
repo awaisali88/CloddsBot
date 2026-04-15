@@ -4,6 +4,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { logger } from '../utils/logger';
+import { anthropicSdkAuth } from '../providers';
 
 export type SummarizerFn = (text: string, maxTokens: number) => Promise<string>;
 
@@ -18,7 +19,7 @@ export function createClaudeSummarizer(options: ClaudeSummarizerOptions = {}): S
   const apiKey = options.apiKey || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return undefined;
 
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic(anthropicSdkAuth(apiKey));
   const model = options.model || DEFAULT_SUMMARY_MODEL;
 
   return async (text: string, maxTokens: number): Promise<string> => {

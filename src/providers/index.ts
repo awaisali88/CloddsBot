@@ -24,6 +24,47 @@ import {
 import { GroqProvider, TogetherProvider, FireworksProvider } from './discovery';
 
 // =============================================================================
+// ANTHROPIC AUTH HELPERS
+// =============================================================================
+
+/**
+ * Anthropic accepts two credential formats:
+ *   - sk-ant-api03-...  → standard API key, sent via `x-api-key` header
+ *   - sk-ant-oat01-...  → OAuth access token, sent via `Authorization: Bearer`
+ *                         (requires `anthropic-beta: oauth-2025-04-20`)
+ *
+ * Detects which kind of credential we have and returns the right HTTP headers
+ * for direct fetch() calls.
+ */
+export function buildAnthropicAuthHeaders(credential: string): Record<string, string> {
+  const headers: Record<string, string> = { 'anthropic-version': '2023-06-01' };
+  const trimmed = (credential || '').trim();
+  if (trimmed.startsWith('sk-ant-oat')) {
+    headers['Authorization'] = `Bearer ${trimmed}`;
+    headers['anthropic-beta'] = 'oauth-2025-04-20';
+  } else {
+    headers['x-api-key'] = trimmed;
+  }
+  return headers;
+}
+
+/**
+ * Returns the options object to pass to `new Anthropic({...})` from the
+ * @anthropic-ai/sdk package. OAuth tokens use `authToken` (which the SDK
+ * sends as `Authorization: Bearer`) instead of `apiKey`.
+ */
+export function anthropicSdkAuth(credential: string): { apiKey?: string; authToken?: string; defaultHeaders?: Record<string, string> } {
+  const trimmed = (credential || '').trim();
+  if (trimmed.startsWith('sk-ant-oat')) {
+    return {
+      authToken: trimmed,
+      defaultHeaders: { 'anthropic-beta': 'oauth-2025-04-20' },
+    };
+  }
+  return { apiKey: trimmed };
+}
+
+// =============================================================================
 // TYPES
 // =============================================================================
 
@@ -346,8 +387,7 @@ export class AnthropicProvider implements Provider {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': this.config.apiKey,
-        'anthropic-version': '2023-06-01',
+        ...buildAnthropicAuthHeaders(this.config.apiKey),
       },
       body: JSON.stringify(body),
     });
@@ -416,8 +456,7 @@ export class AnthropicProvider implements Provider {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': this.config.apiKey,
-          'anthropic-version': '2023-06-01',
+          ...buildAnthropicAuthHeaders(this.config.apiKey),
         },
         body: JSON.stringify({
           model: 'claude-3-haiku-20240307',
@@ -437,8 +476,7 @@ export class AnthropicProvider implements Provider {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': this.config.apiKey,
-          'anthropic-version': '2023-06-01',
+          ...buildAnthropicAuthHeaders(this.config.apiKey),
         },
         body: JSON.stringify(body),
       });

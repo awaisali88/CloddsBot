@@ -18,6 +18,7 @@ import { join } from 'path';
 import { homedir } from 'os';
 import { logger } from '../utils/logger';
 import Anthropic from '@anthropic-ai/sdk';
+import { anthropicSdkAuth } from '../providers';
 
 // =============================================================================
 // TYPES
@@ -550,7 +551,7 @@ export function createSubagentManager(): SubagentManager {
         run.events.emit('error', new Error('ANTHROPIC_API_KEY not set'));
         return state;
       }
-      anthropicClient = new Anthropic({ apiKey });
+      anthropicClient = new Anthropic(anthropicSdkAuth(apiKey));
     }
 
     const model = state.config.model || 'claude-3-5-sonnet-20241022';

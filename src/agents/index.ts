@@ -4,6 +4,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { anthropicSdkAuth } from '../providers';
 import { spawn, spawnSync, ChildProcess, execSync, execFileSync } from 'child_process';
 import { randomUUID } from 'crypto';
 import { generateId as generateSecureId } from '../utils/id';
@@ -17011,7 +17012,7 @@ export async function createAgentManager(
     throw new Error('ANTHROPIC_API_KEY environment variable is required');
   }
 
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic(anthropicSdkAuth(apiKey));
   const skills = createSkillManager(config.agents.defaults.workspace);
   let credentials: CredentialsManager;
   try {
