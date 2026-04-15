@@ -16,6 +16,7 @@ import {
   logAudit,
   type McpSecurityConfig,
 } from './security.js';
+import { buildMcpTools, dispatchTool } from './schemas.js';
 
 // =============================================================================
 // TYPES
@@ -63,35 +64,28 @@ async function ensureSkills(): Promise<void> {
 // TOOL MAPPING
 // =============================================================================
 
-async function listTools(): Promise<McpTool[]> {
+export async function listTools(): Promise<McpTool[]> {
   await ensureSkills();
-  return skillManifest!.map((name) => ({
-    name: `clodds_${name.replace(/-/g, '_')}`,
-    description: `Clodds skill: ${name}`,
-    inputSchema: {
-      type: 'object',
-      properties: {
-        args: { type: 'string', description: 'Arguments to pass to the skill command' },
-      },
-    },
-  }));
+  return buildMcpTools(skillManifest!);
 }
 
-async function callTool(toolName: string, args: Record<string, unknown>): Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }> {
+export async function callTool(toolName: string, args: Record<string, unknown>): Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }> {
   await ensureSkills();
 
-  // clodds_trading_polymarket → trading-polymarket
-  const skillName = toolName.replace(/^clodds_/, '').replace(/_/g, '-');
-  const skillArgs = typeof args.args === 'string' ? args.args : '';
-
-  // Build command string like "/trading-polymarket balance"
-  const command = `/${skillName} ${skillArgs}`.trim();
+  // Resolve tool name → skill command (subcommand-aware via dispatchTool)
+  const command = dispatchTool(toolName, args);
+  if (!command) {
+    return {
+      content: [{ type: 'text', text: `Unknown tool: ${toolName}` }],
+      isError: true,
+    };
+  }
 
   const result = await executeSkill!(command);
 
   if (!result.handled) {
     return {
-      content: [{ type: 'text', text: `Unknown skill: ${skillName}` }],
+      content: [{ type: 'text', text: `Unknown skill for tool: ${toolName}` }],
       isError: true,
     };
   }
@@ -112,7 +106,20 @@ async function callTool(toolName: string, args: Record<string, unknown>): Promis
 // REQUEST HANDLER
 // =============================================================================
 
-async function handleRequest(req: JsonRpcRequest): Promise<JsonRpcResponse | null> {
+export function getSecurityConfig(): McpSecurityConfig {
+  if (!securityConfig) securityConfig = loadSecurityConfig();
+  return securityConfig;
+}
+
+export async function handleMcpRequest(
+  req: JsonRpcRequest,
+  clientId: string = 'stdio',
+): Promise<JsonRpcResponse | null> {
+  return handleRequest(req, clientId);
+}
+
+async function handleRequest(req: JsonRpcRequest, clientId: string = 'stdio'): Promise<JsonRpcResponse | null> {
+  if (!securityConfig) securityConfig = loadSecurityConfig();
   switch (req.method) {
     case 'initialize': {
       const result: McpInitializeResult = {
@@ -141,7 +148,6 @@ async function handleRequest(req: JsonRpcRequest): Promise<JsonRpcResponse | nul
 
       const toolName = params.name;
       const toolArgs = params.arguments ?? {};
-      const clientId = 'stdio'; // single client for stdio transport
       const start = Date.now();
 
       // Security pipeline

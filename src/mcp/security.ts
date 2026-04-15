@@ -7,6 +7,7 @@
 
 import { RateLimiter, detectInjection } from '../security/index.js';
 import type { McpTool } from './index.js';
+import { isToolInProfile, filterToolsByProfile } from './profiles.js';
 
 // =============================================================================
 // CONFIG
@@ -69,7 +70,12 @@ export function isToolAllowed(toolName: string, config: McpSecurityConfig): bool
     return config.allowedTools.has(toolName);
   }
 
-  // Profile-based filtering
+  // Profile-based filtering (delegated to profiles.ts for richer profile set)
+  if (config.toolProfile && config.toolProfile !== 'full') {
+    return isToolInProfile(toolName, config.toolProfile);
+  }
+
+  // Legacy inline prefixes (kept for back-compat with existing env configs)
   const prefixes = TOOL_PROFILES[config.toolProfile];
   if (prefixes && prefixes.length > 0) {
     return prefixes.some((prefix) => toolName.startsWith(prefix));
@@ -81,14 +87,35 @@ export function isToolAllowed(toolName: string, config: McpSecurityConfig): bool
 
 /** Filter a tools/list response to only include allowed tools */
 export function filterTools(tools: McpTool[], config: McpSecurityConfig): McpTool[] {
-  const hasFilters =
-    config.blockedTools.size > 0 ||
-    config.allowedTools.size > 0 ||
-    (config.toolProfile !== 'full' && TOOL_PROFILES[config.toolProfile]?.length);
+  let filtered = tools;
+  if (config.toolProfile && config.toolProfile !== 'full') {
+    filtered = filterToolsByProfile(filtered, config.toolProfile);
+  }
+  if (config.blockedTools.size > 0) {
+    filtered = filtered.filter((t) => !config.blockedTools.has(t.name));
+  }
+  if (config.allowedTools.size > 0) {
+    filtered = filtered.filter((t) => config.allowedTools.has(t.name));
+  }
+  return filtered;
+}
 
-  if (!hasFilters) return tools;
-
-  return tools.filter((t) => isToolAllowed(t.name, config));
+/** Factory for an Express rate-limit middleware keyed by client IP. */
+export function createRateLimitMiddleware(config: McpSecurityConfig) {
+  const perMinute = Number(process.env.CLODDS_MCP_IP_RATE_LIMIT || 60);
+  const limiter = new RateLimiter({ maxRequests: perMinute, windowMs: 60_000 });
+  return (req: any, res: any, next: any) => {
+    const ip = (req.ip || req.socket?.remoteAddress || 'unknown') as string;
+    const result = limiter.check(ip);
+    if (!result.allowed) {
+      res.status(429).json({
+        error: `Rate limited: ${perMinute}/min exceeded`,
+        retryInSec: Math.ceil(result.resetIn / 1000),
+      });
+      return;
+    }
+    next();
+  };
 }
 
 // =============================================================================
