@@ -203,6 +203,10 @@ export function inferToolMetadata(toolName: string, description: string): ToolMe
   // Platform inference from prefix (longest prefixes first to match correctly)
   const platformPrefixes: [string, string][] = [
     ['binance_futures_', 'binance'],
+    ['binance_spot_', 'binance'],
+    ['bybit_spot_', 'bybit'],
+    ['mexc_spot_', 'mexc'],
+    ['hyperliquid_spot_', 'hyperliquid'],
     ['solana_jupiter_', 'solana'],
     ['solana_auto_', 'solana'],
     ['solana_best_', 'solana'],

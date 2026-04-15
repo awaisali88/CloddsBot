@@ -620,9 +620,10 @@ export function createSkillManager(workspacePath?: string, config?: SkillManager
         hl: ['hyperliquid'], hyper: ['hyperliquid'],
         bnb: ['pancakeswap', 'opinion'],
         // Trading intents (NOT "trading" — too broad, matches all trading-* skills)
-        buy: ['execution'], sell: ['execution'],
+        buy: ['execution', 'spot'], sell: ['execution', 'spot'],
         trade: ['execution'], order: ['execution'],
         long: ['futures'], short: ['futures'],
+        spot: ['spot'],
         // Strategy
         arb: ['arbitrage', 'opportunity'], arbitrage: ['arbitrage', 'opportunity'],
         perps: ['futures'], perpetuals: ['futures'], leverage: ['futures'],
@@ -799,13 +800,14 @@ export function createSkillManager(workspacePath?: string, config?: SkillManager
       // BUILD CONTEXT — compact directory + expanded details
       // =====================================================================
       const SKILL_GROUPS: Record<string, string[]> = {
-        'Trading': [], 'Futures/Perps': [], 'Solana DeFi': [], 'EVM': [],
+        'Trading': [], 'Spot/CEX': [], 'Futures/Perps': [], 'Solana DeFi': [], 'EVM': [],
         'Strategy': [], 'Portfolio': [], 'Monitoring': [], 'Analytics': [],
         'Social': [], 'Admin': [], 'System': [], 'Other': [],
       };
 
       // Categorize skills into groups based on name patterns
       const categorize = (name: string): string => {
+        if (name === 'trading-spot' || /spot$/.test(name)) return 'Spot/CEX';
         if (/^trading-/.test(name) || /^(betfair|smarkets|metaculus|predictit|predictfun|opinion|veil|agentbets|markets)$/.test(name)) return 'Trading';
         if (/futures$/.test(name) || /^(hyperliquid|drift|drift-sdk|percolator|lighter)$/.test(name)) return 'Futures/Perps';
         if (/^(jupiter|raydium|pumpfun|pump-swarm|meteora|meteora-dbc|orca|kamino|marginfi|solend|dex|mev|bags|copy-trading-solana)$/.test(name)) return 'Solana DeFi';

@@ -355,6 +355,59 @@ export async function getSpotBalances(userAddress: string): Promise<SpotBalance[
   return data.balances;
 }
 
+/**
+ * Resolve a human-readable spot pair like "HYPE/USDC" or coin name like "HYPE"
+ * to the Hyperliquid spot coin identifier required by `placeSpotOrder`.
+ *
+ * Hyperliquid's spot universe identifies pairs by name (e.g. "PURR/USDC") or
+ * by index-prefixed string (e.g. "@1"). The SDK accepts the human name when
+ * it matches an entry in spotMeta.universe[].name, otherwise the @-index form.
+ */
+export async function resolveSpotCoin(pair: string): Promise<string> {
+  const normalized = pair.toUpperCase().trim();
+  const meta = await getSpotMeta();
+  // Direct universe match (e.g. "PURR/USDC")
+  const direct = meta.universe.find((u) => u.name.toUpperCase() === normalized);
+  if (direct) return direct.name;
+  // Try base/USDC if user passed bare base coin like "HYPE"
+  const guess = `${normalized}/USDC`;
+  const guessHit = meta.universe.find((u) => u.name.toUpperCase() === guess);
+  if (guessHit) return guessHit.name;
+  // Fall back to index form (Hyperliquid SDK also accepts @<index>)
+  const tokenIdx = meta.tokens.findIndex((t) => t.name.toUpperCase() === normalized);
+  if (tokenIdx >= 0) {
+    const universeIdx = meta.universe.findIndex((u) => u.tokens[0] === tokenIdx);
+    if (universeIdx >= 0) return `@${universeIdx}`;
+  }
+  throw new Error(`Hyperliquid spot pair not found: ${pair}`);
+}
+
+/**
+ * Get the current mid price for a spot pair (resolved to coin name).
+ */
+export async function getSpotPrice(pair: string): Promise<number> {
+  const coin = await resolveSpotCoin(pair);
+  const mids = await getAllMids();
+  // spotMetaAndAssetCtxs returns markPx for each universe entry; allMids is keyed by name
+  const mid = parseFloat(mids[coin] ?? '0');
+  if (mid > 0) return mid;
+  // Fallback: pull from spot asset contexts
+  const [, ctxs] = await getSpotMetaAndAssetCtxs();
+  const universeIdx = parseInt(coin.replace(/^@/, ''), 10);
+  if (!Number.isNaN(universeIdx) && ctxs[universeIdx]) {
+    return parseFloat(ctxs[universeIdx].markPx);
+  }
+  throw new Error(`No spot price available for ${pair}`);
+}
+
+/**
+ * Get the L2 orderbook for a spot pair (resolved to coin name).
+ */
+export async function getSpotOrderBook(pair: string): Promise<Orderbook> {
+  const coin = await resolveSpotCoin(pair);
+  return getOrderbook(coin);
+}
+
 export async function getUserFills(userAddress: string): Promise<UserFills[]> {
   return httpRequest('/info', {
     type: 'userFills',
