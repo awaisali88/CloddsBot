@@ -1,0 +1,41 @@
+# Railway deploy config — runs the MCP HTTP transport by default.
+# Switch `startCommand` to `node dist/index.js` to deploy the gateway instead.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "node dist/bin/mcp-http.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+# Public-ish env vars that Railway should prompt for on first deploy.
+# Secrets (API keys) should be set via `railway variables set` — never checked in.
+
+[[deploy.envs]]
+name = "CLODDS_MCP_TOKEN"
+description = "Bearer token required on every /mcp request. Generate with `openssl rand -base64 48`."
+required = true
+
+[[deploy.envs]]
+name = "CLODDS_MCP_PORT"
+description = "Port the MCP HTTP server listens on (Railway injects PORT; leave this unset or set to $PORT)."
+default = "18790"
+
+[[deploy.envs]]
+name = "CLODDS_MCP_TOOL_PROFILE"
+description = "Tool allowlist profile. STRONGLY recommended: `read-only` for any publicly reachable deploy. Values: read-only, trading-cex, trading-dex-solana, prediction-markets, defi, full."
+default = "read-only"
+
+[[deploy.envs]]
+name = "CLODDS_MCP_IP_RATE_LIMIT"
+description = "Per-IP requests per minute (default 60)."
+default = "60"
+
+[[deploy.envs]]
+name = "ANTHROPIC_API_KEY"
+description = "Required for the skill layer's AI calls."
+required = true

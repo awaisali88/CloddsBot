@@ -1,6 +1,17 @@
+# Three run modes share the same image; pick one service to start.
+#
+#   docker compose up gateway       # default bot + webchat on :18789
+#   docker compose up mcp-http      # HTTP/SSE MCP on :18790 (bearer-auth)
+#   docker compose run --rm -i mcp-stdio   # local stdio MCP for `claude mcp add`
+#
+# All three share `.env` and a named `clodds_data` volume for persistent state.
+
 services:
-  clodds:
+  gateway:
     build: .
+    image: clodds:latest
+    container_name: clodds-gateway
+    command: ["node", "dist/index.js"]
     ports:
       - "18789:18789"
     env_file:
@@ -12,6 +23,39 @@ services:
     volumes:
       - clodds_data:/data
     restart: unless-stopped
+
+  mcp-http:
+    build: .
+    image: clodds:latest
+    container_name: clodds-mcp-http
+    command: ["node", "dist/bin/mcp-http.js"]
+    ports:
+      - "18790:18790"
+    env_file:
+      - .env
+    environment:
+      CLODDS_STATE_DIR: /data
+      CLODDS_WORKSPACE: /data/workspace
+      CLODDS_MCP_PORT: "18790"
+      HEALTHCHECK_PORT: "18790"
+    volumes:
+      - clodds_data:/data
+    restart: unless-stopped
+
+  mcp-stdio:
+    build: .
+    image: clodds:latest
+    container_name: clodds-mcp-stdio
+    command: ["node", "dist/bin/mcp-stdio.js"]
+    stdin_open: true
+    tty: false
+    env_file:
+      - .env
+    environment:
+      CLODDS_STATE_DIR: /data
+      CLODDS_WORKSPACE: /data/workspace
+    volumes:
+      - clodds_data:/data
 
 volumes:
   clodds_data:
