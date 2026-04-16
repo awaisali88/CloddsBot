@@ -5,6 +5,9 @@
  * Default port 18790; override with CLODDS_MCP_PORT.
  * Required env: CLODDS_MCP_TOKEN.
  */
+import { config as dotenvConfig } from 'dotenv';
+dotenvConfig();
+
 import { startMcpHttpServer } from '../mcp/http-server.js';
 
 startMcpHttpServer().catch((err) => {
