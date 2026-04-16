@@ -77,7 +77,9 @@ See [`docs/DOCKER.md`](docs/DOCKER.md) for local + Railway deployment.
 
 Every skill is exposed as an MCP tool so Claude Desktop, Claude Code, Cursor, and Zed can call it directly. Typed per-subcommand tools ship for the top trading skills (`clodds_binance_spot_balance`, `clodds_jupiter_swap`, `clodds_polymarket_buy`, …); every other skill has a generic `clodds_<skill>(args)` fallback.
 
-See [`docs/MCP-CLIENTS.md`](docs/MCP-CLIENTS.md) for client config snippets.
+**New here?** [`docs/MCP-SETUP.md`](docs/MCP-SETUP.md) is the step-by-step walkthrough for Claude Desktop and Claude Code (local stdio, local HTTP, and Railway) — copy-paste configs and smoke tests included.
+
+See [`docs/MCP-CLIENTS.md`](docs/MCP-CLIENTS.md) for additional clients (Cursor, Zed) and the reference config snippets.
 
 
 ## Demo
