@@ -16,6 +16,31 @@
 import type { McpTool } from './index.js';
 import { TOOL_DEFINITIONS, findToolDefinition } from './tool-definitions.js';
 
+/**
+ * Static map of skill directory names to their primary registered command.
+ * Needed because skills register commands lazily (only after executeSkillCommand
+ * is called for the first time), but dispatchTool needs to know the right
+ * command before any skill has been invoked.
+ *
+ * Only skills whose command differs from their directory name need an entry.
+ */
+const DIR_TO_COMMAND: Record<string, string> = {
+  'binance-futures': 'binance-futures', // also /bf, /binance
+  'bybit-futures': 'bb',
+  'mexc-futures': 'mx',
+  'hyperliquid': 'hl',
+  'trading-solana': 'trade-sol',
+  'trading-polymarket': 'poly',
+  'trading-kalshi': 'kalshi',
+  'trading-manifold': 'manifold',
+  'pumpfun': 'pump',
+  'copy-trading': 'copytrade',
+  'copy-trading-solana': 'copytrade-sol',
+  'trading-evm': 'evm',
+  'trading-futures': 'futures',
+  'trading-spot': 'spot',
+};
+
 /** Build the full MCP tool list from a skill manifest. */
 export function buildMcpTools(skillManifest: string[]): McpTool[] {
   const tools: McpTool[] = [];
@@ -65,9 +90,10 @@ export function dispatchTool(toolName: string, args: Record<string, unknown>): s
     return `/${def.skill} ${def.subcommand} ${argsStr}`.trim();
   }
 
-  // 2) Generic fallback — infer skill name from tool name
+  // 2) Generic fallback — resolve skill dir name to its registered command
   if (!toolName.startsWith('clodds_')) return null;
-  const skillName = toolName.replace(/^clodds_/, '').replace(/_/g, '-');
+  const dirName = toolName.replace(/^clodds_/, '').replace(/_/g, '-');
+  const cmd = DIR_TO_COMMAND[dirName] ?? dirName;
   const rawArgs = typeof args.args === 'string' ? args.args : '';
-  return `/${skillName} ${rawArgs}`.trim();
+  return `/${cmd} ${rawArgs}`.trim();
 }

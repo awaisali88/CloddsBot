@@ -201,9 +201,9 @@ const futuresOpen = (skill: string, prefix: string): ToolDefinition[] => [
 ];
 
 const binanceFutures = futuresOpen('binance-futures', 'clodds_binance_futures');
-const bybitFutures = futuresOpen('bybit-futures', 'clodds_bybit_futures');
-const mexcFutures = futuresOpen('mexc-futures', 'clodds_mexc_futures');
-const hyperliquid = futuresOpen('hyperliquid', 'clodds_hyperliquid');
+const bybitFutures = futuresOpen('bb', 'clodds_bybit_futures');
+const mexcFutures = futuresOpen('mx', 'clodds_mexc_futures');
+const hyperliquid = futuresOpen('hl', 'clodds_hyperliquid');
 
 // bybit-spot and mexc-spot share the binance-spot shape
 const spotShape = (skill: string, prefix: string): ToolDefinition[] =>
@@ -299,6 +299,61 @@ const pumpfun: ToolDefinition[] = [
     subcommand: 'balance',
     inputSchema: { type: 'object', properties: {} },
     paramsToArgs: () => '',
+  },
+];
+
+// =============================================================================
+// SOLANA (trading-solana)
+// =============================================================================
+
+const solana: ToolDefinition[] = [
+  {
+    name: 'clodds_solana_balance',
+    description: 'Get SOL and SPL token balances for the configured Solana wallet',
+    skill: 'trade-sol',
+    subcommand: 'balance',
+    inputSchema: { type: 'object', properties: {} },
+    paramsToArgs: () => '',
+  },
+  {
+    name: 'clodds_solana_wallet',
+    description: 'Show the configured Solana wallet address',
+    skill: 'trade-sol',
+    subcommand: 'wallet',
+    inputSchema: { type: 'object', properties: {} },
+    paramsToArgs: () => '',
+  },
+  {
+    name: 'clodds_solana_swap',
+    description: 'Swap tokens on Solana via Jupiter/Raydium/Orca',
+    skill: 'trade-sol',
+    subcommand: 'swap',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        from: { type: 'string', description: 'Input token symbol or mint' },
+        to: { type: 'string', description: 'Output token symbol or mint' },
+        amount: { type: 'string', description: 'Amount of input token' },
+      },
+      required: ['from', 'to', 'amount'],
+    },
+    paramsToArgs: (p) => join(p.from, p.to, p.amount),
+  },
+  {
+    name: 'clodds_solana_quote',
+    description: 'Get a swap quote on Solana without executing',
+    skill: 'trade-sol',
+    subcommand: 'quote',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        from: { type: 'string', description: 'Input token symbol or mint' },
+        to: { type: 'string', description: 'Output token symbol or mint' },
+        amount: { type: 'string', description: 'Amount of input token' },
+      },
+      required: ['from', 'to', 'amount'],
+    },
+    paramsToArgs: (p) => join(p.from, p.to, p.amount),
   },
 ];
 
@@ -433,6 +488,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   ...hyperliquid,
   ...jupiter,
   ...pumpfun,
+  ...solana,
   ...polymarket,
   ...kalshi,
   ...portfolio,

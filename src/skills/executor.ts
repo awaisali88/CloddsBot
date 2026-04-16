@@ -976,6 +976,7 @@ export function getSkillManifest(): string[] {
   return [...SKILL_MANIFEST];
 }
 
+
 /**
  * Execute a skill command
  *
