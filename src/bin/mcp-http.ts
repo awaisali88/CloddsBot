@@ -6,7 +6,10 @@
  * Required env: CLODDS_MCP_TOKEN.
  */
 import { config as dotenvConfig } from 'dotenv';
-dotenvConfig();
+import { resolve } from 'path';
+
+const projectRoot = resolve(__dirname, '..', '..');
+dotenvConfig({ path: resolve(projectRoot, '.env') });
 
 import { startMcpHttpServer } from '../mcp/http-server.js';
 

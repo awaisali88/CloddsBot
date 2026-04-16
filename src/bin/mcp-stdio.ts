@@ -13,7 +13,12 @@
 process.env.LOG_LEVEL = 'silent';
 
 import { config as dotenvConfig } from 'dotenv';
-dotenvConfig(); // Load .env from the working directory (cwd set by the client)
+import { resolve } from 'path';
+
+// Resolve .env relative to the project root (two dirs up from dist/bin/),
+// NOT relative to cwd — Claude Desktop's cwd is its own app directory.
+const projectRoot = resolve(__dirname, '..', '..');
+dotenvConfig({ path: resolve(projectRoot, '.env') });
 
 // Re-enforce silent after dotenv (in case .env sets LOG_LEVEL to something else)
 process.env.LOG_LEVEL = 'silent';
