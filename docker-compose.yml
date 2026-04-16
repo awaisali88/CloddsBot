@@ -1,10 +1,15 @@
 # Three run modes share the same image; pick one service to start.
 #
-#   docker compose up gateway       # default bot + webchat on :18789
-#   docker compose up mcp-http      # HTTP/SSE MCP on :18790 (bearer-auth)
+#   docker compose up                      # gateway only (default profile)
+#   docker compose up mcp-http             # HTTP/SSE MCP on :18790 (bearer-auth)
 #   docker compose run --rm -i mcp-stdio   # local stdio MCP for `claude mcp add`
 #
-# All three share `.env` and a named `clodds_data` volume for persistent state.
+# mcp-http / mcp-stdio are behind compose profiles so they don't auto-start
+# alongside the gateway (all three share the same named volume, and
+# racing on its first-mount init caused "file exists" errors).
+#
+# To run gateway + mcp-http together, activate the `http` profile:
+#   docker compose --profile http up
 
 services:
   gateway:
@@ -28,6 +33,7 @@ services:
   # Run `docker compose build gateway` once before `docker compose up mcp-http`.
   mcp-http:
     image: clodds:latest
+    profiles: ["http", "mcp"]
     container_name: clodds-mcp-http
     command: ["node", "dist/bin/mcp-http.js"]
     ports:
@@ -45,6 +51,7 @@ services:
 
   mcp-stdio:
     image: clodds:latest
+    profiles: ["stdio", "mcp"]
     container_name: clodds-mcp-stdio
     command: ["node", "dist/bin/mcp-stdio.js"]
     stdin_open: true
