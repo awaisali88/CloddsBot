@@ -28,8 +28,12 @@ openssl rand -base64 48   # paste as CLODDS_MCP_TOKEN
 ### 2. Build once
 
 ```bash
-docker compose build
+docker compose build gateway
 ```
+
+Only the `gateway` service owns the build context — `mcp-http` and
+`mcp-stdio` reuse the same `clodds:latest` image, so one build serves all
+three modes (and avoids a BuildKit parallel-export collision).
 
 ### 3. Run a mode
 

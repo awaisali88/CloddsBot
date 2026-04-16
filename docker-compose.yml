@@ -24,8 +24,9 @@ services:
       - clodds_data:/data
     restart: unless-stopped
 
+  # Reuses the clodds:latest image built by the `gateway` service.
+  # Run `docker compose build gateway` once before `docker compose up mcp-http`.
   mcp-http:
-    build: .
     image: clodds:latest
     container_name: clodds-mcp-http
     command: ["node", "dist/bin/mcp-http.js"]
@@ -43,7 +44,6 @@ services:
     restart: unless-stopped
 
   mcp-stdio:
-    build: .
     image: clodds:latest
     container_name: clodds-mcp-stdio
     command: ["node", "dist/bin/mcp-stdio.js"]
