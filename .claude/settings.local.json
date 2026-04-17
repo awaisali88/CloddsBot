@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/awais/.claude/plugins/cache/awaisali88/aria-trading/1.0.0/**)",
+      "Read(//c/Users/awais/.claude/plugins/cache/awaisali88/aria-trading/1.0.0/.claude-plugin/**)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
+    ]
+  }
+}
